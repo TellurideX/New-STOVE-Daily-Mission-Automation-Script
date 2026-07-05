@@ -22,52 +22,89 @@
     const decodedUrl = decodeURI(currentUrl);
 
     if (currentUrl.includes('https://reward.onstove.com/ko')) {
-        
-        function createAutomationButton() {
-            if (document.getElementById('stove-auto-btn')) return;
 
-            const btn = document.createElement('button');
-            btn.id = 'stove-auto-btn';
-            btn.innerText = '자동 미션 시작';
-            
-            btn.style.position = 'fixed';
-            btn.style.bottom = '30px';
-            btn.style.right = '30px';
-            btn.style.zIndex = '9999';
-            btn.style.padding = '15px 20px';
-            btn.style.backgroundColor = '#1e88e5';
-            btn.style.color = 'white';
-            btn.style.border = 'none';
-            btn.style.borderRadius = '8px';
-            btn.style.fontSize = '16px';
-            btn.style.fontWeight = 'bold';
-            btn.style.cursor = 'pointer';
-            btn.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+        function createAutomationButton() {
+            if (document.getElementById('stove-auto-container')) return;
+
+            const container = document.createElement("div");
+            container.id = "stove-auto-container";
+            container.style.position = "fixed";
+            container.style.bottom = "30px";
+            container.style.right = "30px";
+            container.style.zIndex = "999999";
+            container.style.padding = "15px";
+            container.style.backgroundColor = "#222";
+            container.style.color = "white";
+            container.style.borderRadius = "8px";
+            container.style.boxShadow = "0px 10px 20px rgba(0,0,0,0.5)";
+            container.style.fontFamily = "sans-serif";
+            container.style.width = "190px";
+            container.style.cursor = "move";
+            container.style.border = "1px solid #333";
+
+            container.innerHTML = `
+                <div style="font-weight:bold; margin-bottom:10px; font-size:13px; text-align:center; color:#ff9800; user-select:none; pointer-events:none;">🎯 STOVE 미션 자동화</div>
+                <button id="stove-auto-btn" style="width:100%; padding:10px; border:none; border-radius:4px; background-color:#4CAF50; color:white; font-weight:bold; cursor:pointer; font-size:13px; transition: 0.2s;">
+                    자동 미션 시작
+                </button>
+            `;
+
+            document.body.appendChild(container);
+
+            const btn = document.getElementById('stove-auto-btn');
+
+            let isDragging = false;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            container.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                isDragging = true;
+                const rect = container.getBoundingClientRect();
+                container.style.bottom = 'auto';
+                container.style.right = 'auto';
+                container.style.left = rect.left + 'px';
+                container.style.top = rect.top + 'px';
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                container.style.left = (e.clientX - offsetX) + 'px';
+                container.style.top = (e.clientY - offsetY) + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) isDragging = false;
+            });
 
             btn.onclick = async () => {
                 if (btn.disabled) return;
                 btn.disabled = true;
                 btn.innerText = '미션 진행 중...';
+                btn.style.backgroundColor = '#555';
                 await executeMissionLogic();
                 btn.disabled = false;
                 btn.innerText = '자동 미션 시작';
+                btn.style.backgroundColor = '#4CAF50';
             };
-            document.body.appendChild(btn);
         }
 
         function getMissionState(missionName) {
             const allParagraphs = Array.from(document.querySelectorAll('p'));
             const titleElement = allParagraphs.find(el => el.innerText.trim() === missionName);
             if (!titleElement) return null;
-            
+
             const missionBox = titleElement.closest('.stds-box');
             const button = missionBox ? missionBox.querySelector('button') : null;
             const btnText = button ? button.innerText.trim() : '';
-            
-            return { 
-                button, 
-                btnText, 
-                isRunnable: btnText === '미션하기' && !button.disabled 
+
+            return {
+                button,
+                btnText,
+                isRunnable: btnText === '미션하기' && !button.disabled
             };
         }
 
@@ -77,8 +114,8 @@
             for (const name of ["365일 특가 게임 구경하기", "MY홈 방문하기", "스토브 메인 방문하기"]) {
                 const state = getMissionState(name);
                 if (state && state.isRunnable) {
-                    GM_setValue('autoRunExpire', Date.now() + 15000); 
-                    state.button.click(); 
+                    GM_setValue('autoRunExpire', Date.now() + 15000);
+                    state.button.click();
                     clickedCount++;
                     await new Promise(r => setTimeout(r, 300));
                 }
@@ -87,12 +124,12 @@
             await new Promise(r => setTimeout(r, 200));
 
             for (const name of ["라운지 좋아요 누르기", "라운지 댓글 쓰기", "라운지 글쓰기"]) {
-                const state = getMissionState(name); 
+                const state = getMissionState(name);
                 if (state && state.isRunnable) {
-                    GM_setValue('autoRunExpire', Date.now() + 15000); 
+                    GM_setValue('autoRunExpire', Date.now() + 15000);
                     GM_openInTab('https://lounge.onstove.com/feed/%ED%94%8C%EB%A0%88%EC%9D%B4%ED%81%AC%EB%AF%B8%EC%85%98', { active: true });
                     clickedCount++;
-                    break; 
+                    break;
                 }
             }
 
@@ -109,7 +146,7 @@
                 if (btn.innerText.trim() === '받기' && !btn.disabled) {
                     btn.click();
                     claimCount++;
-                    await new Promise(r => setTimeout(r, 500)); 
+                    await new Promise(r => setTimeout(r, 500));
                 }
             }
         }
@@ -117,12 +154,13 @@
         createAutomationButton();
 
         if (GM_getValue('triggerReward', false)) {
-            GM_setValue('triggerReward', false); 
-            
+            GM_setValue('triggerReward', false);
+
             const mainBtn = document.getElementById('stove-auto-btn');
             if (mainBtn) {
                 mainBtn.disabled = true;
                 mainBtn.innerText = '보상 수령 중...';
+                mainBtn.style.backgroundColor = '#555';
             }
 
             setTimeout(async () => {
@@ -130,23 +168,24 @@
                 if (mainBtn) {
                     mainBtn.disabled = false;
                     mainBtn.innerText = '자동 미션 시작';
+                    mainBtn.style.backgroundColor = '#4CAF50';
                 }
             }, 2000);
 
         } else {
             const checkTimer = setInterval(() => {
                 if (GM_getValue('triggerReward', false)) {
-                    clearInterval(checkTimer); 
-                    location.reload(); 
+                    clearInterval(checkTimer);
+                    location.reload();
                 }
             }, 1000);
         }
-    } 
-    
+    }
+
     else if (decodedUrl.includes('/feed/플레이크미션')) {
         const expireTime = GM_getValue('autoRunExpire', 0);
         if (Date.now() < expireTime) {
-            GM_setValue('autoRunExpire', 0); 
+            GM_setValue('autoRunExpire', 0);
 
             setTimeout(async () => {
                 const targetTitle = '플레이크 미션 참여';
@@ -211,7 +250,7 @@
                 if (commentSubmitBtn && !commentSubmitBtn.disabled) {
                     commentSubmitBtn.click();
                     GM_setValue('triggerReward', true);
-                    
+
                     setTimeout(() => {
                         window.close();
                     }, 1500);
