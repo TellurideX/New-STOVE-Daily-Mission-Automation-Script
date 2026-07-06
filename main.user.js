@@ -21,7 +21,18 @@
     const currentUrl = window.location.href;
     const decodedUrl = decodeURI(currentUrl);
 
-    if (currentUrl.includes('https://reward.onstove.com/ko')) {
+    if (!currentUrl.includes('https://reward.onstove.com/ko') && !decodedUrl.includes('/feed/플레이크미션')) {
+        const closeExpire = GM_getValue('closeSpecialTabExpire', 0);
+        if (Date.now() < closeExpire) {
+            GM_setValue('closeSpecialTabExpire', 0);
+            setTimeout(() => {
+                window.close();
+            }, 1000);
+            return;
+        }
+    }
+
+    if (currentUrl.includes('https://reward.onstove.com/ko') && !currentUrl.includes('/event')) {
 
         function createAutomationButton() {
             if (document.getElementById('stove-auto-container')) return;
@@ -115,6 +126,9 @@
                 const state = getMissionState(name);
                 if (state && state.isRunnable) {
                     GM_setValue('autoRunExpire', Date.now() + 15000);
+                    if (name === "365일 특가 게임 구경하기") {
+                        GM_setValue('closeSpecialTabExpire', Date.now() + 10000);
+                    }
                     state.button.click();
                     clickedCount++;
                     await new Promise(r => setTimeout(r, 300));
@@ -139,14 +153,20 @@
         }
 
         async function claimAllRewards() {
-            const buttons = document.querySelectorAll('button');
-            let claimCount = 0;
+            let attempts = 0;
 
-            for (const btn of buttons) {
-                if (btn.innerText.trim() === '받기' && !btn.disabled) {
-                    btn.click();
-                    claimCount++;
-                    await new Promise(r => setTimeout(r, 500));
+            while (attempts < 15) {
+                const allButtons = Array.from(document.querySelectorAll('button'));
+                const targetBtn = allButtons.find(btn => btn.innerText.trim() === '받기' && !btn.disabled && btn.dataset.macroClicked !== 'true');
+
+                if (targetBtn) {
+                    targetBtn.click();
+                    targetBtn.dataset.macroClicked = 'true';
+                    attempts = 0;
+                    await new Promise(r => setTimeout(r, 250));
+                } else {
+                    attempts++;
+                    await new Promise(r => setTimeout(r, 100));
                 }
             }
         }
@@ -170,7 +190,7 @@
                     mainBtn.innerText = '자동 미션 시작';
                     mainBtn.style.backgroundColor = '#4CAF50';
                 }
-            }, 2000);
+            }, 1500);
 
         } else {
             const checkTimer = setInterval(() => {
